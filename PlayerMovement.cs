@@ -10,9 +10,12 @@ public class PlayerMovement : MonoBehaviour
 
     private bool canDash = true;
     private bool isDashing;
-    private float dashingPower = 400f;
+    private float dashingPower = 100f;
     private float dashingTime = 0.1f;
     private float dashingCooldown = 1f;
+
+    private float coyoteTime = 0.2f;
+    private float coyoteTimeCounter;
 
     [SerializeField] private Rigidbody2D rb;
     [SerializeField] private Transform groundCheck;
@@ -28,7 +31,16 @@ public class PlayerMovement : MonoBehaviour
 
         horizontal = Input.GetAxisRaw("Horizontal");
 
-        if (Input.GetButtonDown("Jump") && IsGrounded())
+        if(IsGrounded())
+        {
+            coyoteTimeCounter = coyoteTime;
+        }
+        else
+        {
+            coyoteTimeCounter -= Time.deltaTime;
+        }
+
+        if (coyoteTimeCounter > 0f && Input.GetButtonDown("Jump"))
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpingPower);
         }
@@ -36,6 +48,8 @@ public class PlayerMovement : MonoBehaviour
         if (Input.GetButtonUp("Jump") && rb.linearVelocity.y > 0f)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.5f);
+
+            coyoteTimeCounter = 0f;
         }
 
         if (Input.GetKeyDown(KeyCode.LeftShift) && canDash)
