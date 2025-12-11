@@ -1,8 +1,17 @@
 using UnityEngine;
+using System.Collections;
 using UnityEngine.InputSystem;
 public class Player : MonoBehaviour
 {
+    private bool canDash = true;
+    private bool isDashing;
+    private float dashingPower = 36f;
+    private float dashingTime = 0.2f;
+    private float dashingCooldown = 0.5f;
 
+//if(keycode left shift && down)change sprite or whatever
+    [SerializeField] private TrailRenderer tr;
+    
     public Rigidbody2D rb;
     public PlayerInput playerInput;
 
@@ -15,6 +24,7 @@ public class Player : MonoBehaviour
     public float normalGravity;
     public float fallGravity;
     public float jumpGravity;
+
 
     //move inputs
     private Vector2 moveInput;
@@ -31,8 +41,12 @@ public class Player : MonoBehaviour
 
     [Header("Slide Settings")]
     public float slideDuration = .6f;
+    public float slideSpeed = 12;
+    public float slideStopDuration = .15f;
     private bool isSliding;
+    private bool slideInputLocked;
     private float slideTimer;
+    private float slideStopTimer;
 
 
     private void Start()
@@ -43,16 +57,34 @@ public class Player : MonoBehaviour
     
         
 
-    void Update()
-    {
+    private void Update()
+    {   
+        
+
+        if (isDashing)
+        {
+            return;
+        }
+        if (Input.GetKeyDown(KeyCode.LeftControl) && canDash)
+        {
+            StartCoroutine(Dash());
+        }
+        
         HandleSlide();
-        Flip();
+        if(!isSliding)
+            Flip();
+
+
     }
 
 
 
     void FixedUpdate()
     {
+        if (isDashing)
+        {
+            return;
+        }
         ApplyVariableGravity();
         CheckGrounded();
 
@@ -96,13 +128,37 @@ public class Player : MonoBehaviour
         if (isSliding)
         {
             slideTimer -= Time.deltaTime;
+            rb.linearVelocity = new Vector2(slideSpeed * facingDirection, rb.linearVelocity.y);
 
             if (slideTimer <= 0)
             {
                 isSliding = false;
+                slideStopTimer = slideStopDuration;
             }
+
+
         }
-        
+
+
+        if(slideStopTimer > 0)
+        {
+            slideStopTimer -= Time.deltaTime;
+            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+        }
+
+
+        if(isGrounded && runPressed && moveInput.y < -.1f && !isSliding && !slideInputLocked)
+        {
+            isSliding = true;
+            slideInputLocked = true;
+            slideTimer = slideDuration;
+        }
+
+        if(slideStopTimer < 0 && moveInput.y >= -.1f)
+        {
+            slideInputLocked = false;
+        }
+    
         if(isGrounded && runPressed && moveInput.y < -.1f && !isSliding)
         {
             isSliding = true;
@@ -174,9 +230,29 @@ public class Player : MonoBehaviour
 
 
 
+
    private void OnDrawGizmosSelected()
    {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
    }
+
+
+    private IEnumerator Dash()
+    {
+        canDash = false;
+        isDashing = true;
+        float originalGravity = rb.gravityScale;
+        rb.gravityScale = 0f;
+        rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, 0f);
+        tr.emitting = true;
+        yield return new WaitForSeconds(dashingTime);
+        tr.emitting = false;
+        rb.gravityScale = originalGravity;
+        isDashing = false;
+        yield return new WaitForSeconds(dashingCooldown);
+        canDash = true;
+    }
+    
+
 }
